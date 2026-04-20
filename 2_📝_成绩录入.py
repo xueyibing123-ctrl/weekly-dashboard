@@ -166,7 +166,9 @@ with tab2:
                         st.success(f"✅ 成功导入 {len(rows)} 名学生成绩")
                         st.balloons()
             except Exception as e:
+                import traceback
                 st.error(f"解析失败：{e}")
+                st.code(traceback.format_exc())
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — 历史考试管理
