@@ -130,6 +130,7 @@ with tab2:
             try:
                 df = pd.read_excel(uploaded)
                 if "姓名" not in df.columns:
+                    df = df.dropna(subset=["姓名"])  # 删除姓名为空的行
                     st.error("Excel 中必须包含「姓名」列")
                 else:
                     st.dataframe(df, use_container_width=True)
@@ -139,7 +140,9 @@ with tab2:
                     unmatched = df[~df["姓名"].isin(name_to_id)]
 
                     if len(unmatched):
-                        st.warning(f"⚠️ 以下学生未找到匹配：{', '.join(unmatched['姓名'].tolist())}")
+                        unmatched_names = [str(n) for n in unmatched['姓名'].tolist() if pd.notna(n)]
+                        if unmatched_names:
+                           st.warning(f"⚠️ 以下学生未找到匹配：{', '.join(unmatched_names)}")
 
                     st.info(f"匹配到 {len(matched)} 名学生")
 
@@ -148,9 +151,9 @@ with tab2:
                         rows = []
                         for _, row in matched.iterrows():
                             sid = name_to_id[row["姓名"]]
-                            chinese = float(row.get("语文", 0) or 0)
-                            math = float(row.get("数学", 0) or 0)
-                            english = float(row.get("英语", 0) or 0)
+                            chinese = float(0 if pd.isna(row.get("语文", 0)) else row.get("语文", 0))
+                            math = float(0 if pd.isna(row.get("数学", 0)) else row.get("数学", 0))
+                            english = float(0 if pd.isna(row.get("英语", 0)) else row.get("英语", 0))
                             rows.append((sid, chinese, math, english))
                         bulk_upsert_scores(exam_id, rows)
                         st.success(f"✅ 成功导入 {len(rows)} 名学生成绩")
