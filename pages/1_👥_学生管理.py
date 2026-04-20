@@ -106,7 +106,7 @@ with tab2:
                 if "姓名" not in df.columns:
                     st.error("Excel 中必须包含「姓名」列")
                 else:
-                    df["学号"] = df.get("学号", "").fillna("").astype(str)
+                    df["学号"] = df.get("学号", "").fillna("").apply(lambda x: str(int(float(x))) if str(x).replace('.','').isdigit() else str(x))
                     preview = df[["姓名", "学号"]].head(5)
                     st.dataframe(preview, use_container_width=True)
                     st.caption(f"共 {len(df)} 名学生")
