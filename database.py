@@ -113,9 +113,15 @@ def delete_student(student_id):
 def bulk_add_students(class_id, student_list):
     conn = get_connection()
     cur = conn.cursor()
+    # 过滤掉姓名为空或无效的记录
+    valid_list = [
+        (name, class_id, no)
+        for name, no in student_list
+        if name and str(name).strip().lower() not in ["nan", "none", "null", ""]
+    ]
     cur.executemany(
         "INSERT INTO students (name, class_id, student_no) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        [(name, class_id, no) for name, no in student_list]
+        valid_list
     )
     conn.commit(); cur.close(); conn.close()
 
@@ -148,8 +154,20 @@ def get_all_exams():
 
 
 def add_exam(title, exam_date, class_id):
+    """新建考试，若同班级+同名称+同日期已存在则直接返回已有ID，防止重复创建"""
     conn = get_connection()
     cur = conn.cursor()
+    # 检查是否已存在相同考试
+    cur.execute(
+        "SELECT id FROM exams WHERE title=%s AND exam_date=%s AND class_id=%s",
+        (title, exam_date, class_id)
+    )
+    existing = cur.fetchone()
+    if existing:
+        exam_id = existing["id"]
+        cur.close(); conn.close()
+        return exam_id
+    # 不存在则新建
     cur.execute(
         "INSERT INTO exams (title, exam_date, class_id) VALUES (%s, %s, %s) RETURNING id",
         (title, exam_date, class_id)
