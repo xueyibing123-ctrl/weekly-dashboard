@@ -132,10 +132,10 @@ with tab2:
                 if "姓名" not in df.columns:
                     st.error("Excel 中必须包含「姓名」列")
                 else:
-                    # 确保姓名列为字符串类型
+                    # 先dropna，再转字符串，再过滤所有无效姓名
+                    df = df.dropna(subset=["姓名"])
                     df["姓名"] = df["姓名"].astype(str).str.strip()
-                    # 删除姓名为空、"nan"、"none"的行
-                    df = df[~df["姓名"].str.lower().isin(["", "nan", "none", "null"])]
+                    df = df[~df["姓名"].str.lower().isin(["", "nan", "none", "null", "nat"])]
 
                     st.dataframe(df, use_container_width=True)
                     # 建立姓名→学生ID映射
@@ -144,8 +144,11 @@ with tab2:
                     unmatched = df[~df["姓名"].isin(name_to_id)]
 
                     if len(unmatched):
-                        unmatched_names = unmatched["姓名"].tolist()
-                        st.warning(f"⚠️ 以下学生未找到匹配：{', '.join(unmatched_names)}")
+                        # 确保所有名字都是字符串再join
+                        unmatched_names = [str(n) for n in unmatched["姓名"].tolist()
+                                          if pd.notna(n) and str(n).lower() not in ["nan", "none", "null", "", "nat"]]
+                        if unmatched_names:
+                            st.warning(f"⚠️ 以下学生未找到匹配：{chr(44).join(unmatched_names)}")
 
                     st.info(f"匹配到 {len(matched)} 名学生")
 
