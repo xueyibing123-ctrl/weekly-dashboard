@@ -132,13 +132,10 @@ with tab2:
                 if "姓名" not in df.columns:
                     st.error("Excel 中必须包含「姓名」列")
                 else:
-                    # 删除姓名为空的行
-                    df = df.dropna(subset=["姓名"])
                     # 确保姓名列为字符串类型
                     df["姓名"] = df["姓名"].astype(str).str.strip()
-                    # 删除姓名为空字符串或"nan"的行
-                    df = df[df["姓名"] != ""]
-                    df = df[df["姓名"].str.lower() != "nan"]
+                    # 删除姓名为空、"nan"、"none"的行
+                    df = df[~df["姓名"].str.lower().isin(["", "nan", "none", "null"])]
 
                     st.dataframe(df, use_container_width=True)
                     # 建立姓名→学生ID映射
