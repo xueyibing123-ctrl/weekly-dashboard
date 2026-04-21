@@ -18,8 +18,7 @@ if not classes:
     st.stop()
 
 selected_class = st.selectbox(
-    "选择班级",
-    classes,
+    "选择班级", classes,
     format_func=lambda c: f"{c['grade']} {c['name']}"
 )
 class_id = selected_class["id"]
@@ -31,17 +30,22 @@ if not students:
     st.warning("该班级暂无学生，请先在「学生管理」页添加学生")
     st.stop()
 
+def to_float(val):
+    """安全转换为浮点数，缺考/文字/空值统一返回0"""
+    try:
+        return float(val)
+    except:
+        return 0.0
+
 tab1, tab2, tab3 = st.tabs(["➕ 新建考试 + 录入成绩", "📥 Excel 批量导入", "📋 历史考试管理"])
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — 手动录入
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
     col_l, col_r = st.columns([1, 2])
     with col_l:
         st.subheader("📅 考试信息")
         exam_title = st.text_input("考试名称", placeholder="例如：第5次周测")
-        exam_date = st.date_input("考试日期", value=date.today())
+        exam_date  = st.date_input("考试日期", value=date.today())
         default_subjects = ["语文", "数学", "英语", "科学"] if show_science else ["语文", "数学"]
         subjects = st.multiselect(
             "考试科目",
@@ -88,8 +92,6 @@ with tab1:
                 st.success(f"✅ 已保存「{exam_title}」成绩，共 {len(students)} 名学生")
                 st.balloons()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — Excel 批量导入
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
     st.subheader("📥 Excel 批量导入成绩")
@@ -164,10 +166,10 @@ with tab2:
                         rows = []
                         for _, row in matched.iterrows():
                             sid     = name_to_id[row["姓名"]]
-                            chinese = 0.0 if pd.isna(row.get("语文")) else float(row.get("语文", 0))
-                            math    = 0.0 if pd.isna(row.get("数学")) else float(row.get("数学", 0))
-                            english = 0.0 if pd.isna(row.get("英语")) else float(row.get("英语", 0))
-                            science = 0.0 if pd.isna(row.get("科学")) else float(row.get("科学", 0)) if show_science else 0.0
+                            chinese = 0.0 if pd.isna(row.get("语文")) else to_float(row.get("语文", 0))
+                            math    = 0.0 if pd.isna(row.get("数学")) else to_float(row.get("数学", 0))
+                            english = 0.0 if pd.isna(row.get("英语")) else to_float(row.get("英语", 0))
+                            science = 0.0 if (pd.isna(row.get("科学")) or not show_science) else to_float(row.get("科学", 0))
                             rows.append((sid, chinese, math, english, science))
                         bulk_upsert_scores(exam_id, rows)
                         st.success(f"✅ 成功导入 {len(rows)} 名学生成绩")
@@ -177,8 +179,6 @@ with tab2:
                 st.error(f"解析失败：{e}")
                 st.code(traceback.format_exc())
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — 历史考试管理
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
     st.subheader("📋 历史考试记录")
