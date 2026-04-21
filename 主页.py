@@ -62,7 +62,8 @@ classes = get_all_classes()
 all_exams = get_all_exams()
 
 total_classes = len(classes)
-total_exams = len(all_exams)
+# 按考试名称+日期去重，统计实际举办的周测次数
+total_exams = len(set((e["title"], e["exam_date"]) for e in all_exams))
 latest_exams = get_latest_exam_per_class()
 total_students = sum(e.get("student_count", 0) for e in latest_exams)
 
@@ -103,7 +104,9 @@ else:
                 medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
                 cols = st.columns(len(top5))
                 for i, (col, s) in enumerate(zip(cols, top5)):
-                    medal = medals[i] if s["rank"] - 1 < len(medals) else f"No.{s['rank']}"
+                    # 修复：用名次直接取勋章，避免IndexError
+                    rank = s["rank"]
+                    medal = medals[rank - 1] if rank <= len(medals) else f"No.{rank}"
                     col.markdown(f"""
                     <div style="background:#fff9e6;border-left:4px solid #f6c90e;
                                 border-radius:8px;padding:0.7rem 0.8rem;text-align:center;">
