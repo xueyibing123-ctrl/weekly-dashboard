@@ -82,6 +82,8 @@ with tab1:
             display_df = df[["rank", "name", "chinese", "math", "english", "total"]].copy()
             display_df.columns = ["名次", "姓名", "语文", "数学", "英语", "总分"]
             display_df["总分"] = display_df["总分"].astype(int)
+            for col in ["语文", "数学", "英语","总分"]:
+                display_df[col] = display_df[col].round(1)
 
             def highlight_top(row):
                 if row["名次"] == 1:
