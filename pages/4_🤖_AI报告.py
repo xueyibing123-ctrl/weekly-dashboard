@@ -49,9 +49,8 @@ with tab1:
 
     with col_settings:
         st.subheader("⚙️ 报告设置")
-        report_style      = st.radio("报告风格", ["简洁版（发家长群）", "详细版（存档/汇报）"], index=0)
+        report_style      = st.radio("报告风格", ["简洁版（发家长群）", "详细版（教学分析）"], index=0)
         include_trend     = st.checkbox("包含历史趋势分析", value=True)
-        include_suggestions = st.checkbox("包含教学建议", value=True)
         generate_btn      = st.button("🚀 生成分析报告", use_container_width=True, type="primary")
 
     with col_result:
@@ -76,42 +75,39 @@ with tab1:
             if include_trend and len(history) >= 2:
                 prev  = history[-2]
                 curr  = history[-1]
-                delta_total   = curr["avg_total"]   - prev["avg_total"]
-                delta_chinese = curr["avg_chinese"] - prev["avg_chinese"]
-                delta_math    = curr["avg_math"]    - prev["avg_math"]
-                delta_english = curr["avg_english"] - prev["avg_english"]
-
                 def arrow(v):
                     return f"↑{abs(v):.1f}分" if v > 0 else (f"↓{abs(v):.1f}分" if v < 0 else "持平")
-
-                trend_text = (f"总分均分：{prev['avg_total']:.1f} → {curr['avg_total']:.1f}，{arrow(delta_total)}；"
-                              f"语文{arrow(delta_chinese)}，数学{arrow(delta_math)}，英语{arrow(delta_english)}")
+                trend_text = (
+                    f"总分均分：{prev['avg_total']:.1f} → {curr['avg_total']:.1f}，{arrow(curr['avg_total']-prev['avg_total'])}；"
+                    f"语文{arrow(curr['avg_chinese']-prev['avg_chinese'])}，"
+                    f"数学{arrow(curr['avg_math']-prev['avg_math'])}，"
+                    f"英语{arrow(curr['avg_english']-prev['avg_english'])}"
+                )
                 if show_science:
-                    delta_science = curr.get("avg_science", 0) - prev.get("avg_science", 0)
-                    trend_text += f"，科学{arrow(delta_science)}"
+                    delta_sci = (curr.get("avg_science") or 0) - (prev.get("avg_science") or 0)
+                    trend_text += f"，科学{arrow(delta_sci)}"
 
-            # 教学建议
-            suggestions = []
-            if include_suggestions:
-                subjects = {"语文": avg_chinese, "数学": avg_math, "英语": avg_english}
-                if show_science:
-                    subjects["科学"] = avg_science
-                weakest  = min(subjects, key=subjects.get)
-                strongest = max(subjects, key=subjects.get)
-                suggestions.append(f"· 本次 **{weakest}** 为相对薄弱科目（均分 {subjects[weakest]:.1f}），建议加强专项练习")
-                suggestions.append(f"· **{strongest}** 表现突出（均分 {subjects[strongest]:.1f}），可作为优势继续保持")
-                if max_score - min_score > 80:
-                    suggestions.append("· 班级分数跨度较大，建议关注中下层学生的巩固训练")
-                if avg_total < (240 if show_science else 180):
-                    suggestions.append("· 整体均分偏低，建议排查共性知识盲点，加强课堂反馈")
-                elif avg_total > (320 if show_science else 240):
-                    suggestions.append("· 整体表现良好，可适当提升题目难度，挑战优秀学生上限")
+            top5_names  = "、".join([s["name"] for s in top5])
+            science_line = f"\n科学均分：{avg_science:.1f}" if show_science else ""
 
-            top5_names = "、".join([s["name"] for s in top5])
-            science_line = f"  科学均分：{avg_science:.1f}" if show_science else ""
+            # ── Prompt 根据风格区分 ──────────────────────────────────────────
+            if "简洁" in report_style:
+                style_instruction = """请生成一份简洁的家长群通知（150字以内）。
+要求：语气温暖亲切，重点报告均分和前五名，给出1条家庭配合建议，直接输出文字，不用标题格式。"""
+            else:
+                style_instruction = """请生成一份详细的教学分析报告（500字左右），依次包含以下四个部分：
 
-            prompt = f"""
-你是一位专业的小学教育数据分析师，请根据以下周测数据生成一份{'简洁的家长群通知（150字以内）' if '简洁' in report_style else '详细的成绩分析报告（300字左右）'}。
+1.【成绩概览】客观呈现各科均分、最高分、最低分、参测人数等核心数据，概括整体表现水平。
+
+2.【学情诊断】深入分析各科强弱对比，指出薄弱科目及可能原因；关注分数跨度大小，分析是否存在两极分化；结合历史趋势判断班级整体走势。
+
+3.【教学建议】针对薄弱科目给出3条具体可操作的教学调整建议，包括：课堂节奏调整、练习题型设计、分层教学策略、课后辅导重点等，建议要落地可执行。
+
+4.【下次周测备考重点】基于本次数据，明确提出下次周测前需要重点强化的知识点方向和教学准备事项。
+
+语气专业客观，面向教师，直接输出文字，不要使用markdown标题符号（#、**等）。"""
+
+            prompt = f"""你是一位有丰富经验的小学教学研究专家。
 
 班级：{selected_class['grade']}{selected_class['name']}
 考试：{selected_exam['title']}（{selected_exam['exam_date']}）
@@ -119,10 +115,9 @@ with tab1:
 总分均分：{avg_total:.1f}  最高分：{int(max_score)}  最低分：{int(min_score)}
 语文均分：{avg_chinese:.1f}  数学均分：{avg_math:.1f}  英语均分：{avg_english:.1f}{science_line}
 前五名：{top5_names}
-{('历史趋势：' + trend_text) if trend_text else '（本次为首次考试）'}
+{('历史趋势：' + trend_text) if trend_text else '（本次为首次考试，暂无历史对比数据）'}
 
-要求：语气正面鼓励，客观呈现数据，给出1-2条实用建议，不要使用 markdown 标题格式，直接输出文字。
-"""
+{style_instruction}"""
 
             api_key = st.secrets.get("DASHSCOPE_API_KEY", "")
 
@@ -135,9 +130,9 @@ with tab1:
                                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                                 json={
                                     "model": "qwen-plus",
-                                    "temperature": 0.3,
+                                    "temperature": 0.4,
                                     "messages": [
-                                        {"role": "system", "content": "你是一位专业的小学教育数据分析师，擅长用简洁友好的语言解读成绩数据。"},
+                                        {"role": "system", "content": "你是一位有丰富经验的小学教学研究专家，擅长用专业、清晰的语言解读成绩数据并给出教学指导建议。"},
                                         {"role": "user", "content": prompt}
                                     ],
                                 }
@@ -154,21 +149,51 @@ with tab1:
                         api_key = ""
 
             if not api_key:
-                report_lines = [
-                    f"📊 **{selected_class['grade']}{selected_class['name']} · {selected_exam['title']} 成绩报告**",
-                    f"📅 考试日期：{selected_exam['exam_date']}　　参测学生：{class_size} 人",
-                    "",
-                    "**【成绩概览】**",
-                    f"- 总分均分：**{avg_total:.1f}**　最高分：{int(max_score)}　最低分：{int(min_score)}",
-                    f"- 语文均分：{avg_chinese:.1f}　数学均分：{avg_math:.1f}　英语均分：{avg_english:.1f}" +
-                    (f"　科学均分：{avg_science:.1f}" if show_science else ""),
-                ]
-                if trend_text:
-                    report_lines += ["", "**【与上次对比】**", trend_text]
-                report_lines += ["", "**【本次前五名】**", f"🏆 {top5_names}", "恭喜以上同学本次取得优异成绩！"]
-                if suggestions:
-                    report_lines += ["", "**【教学建议】**"] + suggestions
-                report_lines += ["", f"_报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}_"]
+                if "简洁" in report_style:
+                    report_lines = [
+                        f"📊 **{selected_class['grade']}{selected_class['name']} · {selected_exam['title']}**",
+                        f"📅 {selected_exam['exam_date']}　参测：{class_size} 人",
+                        "",
+                        f"总分均分 **{avg_total:.1f}**，最高 {int(max_score)}，最低 {int(min_score)}",
+                        f"语文 {avg_chinese:.1f}　数学 {avg_math:.1f}　英语 {avg_english:.1f}" +
+                        (f"　科学 {avg_science:.1f}" if show_science else ""),
+                        "",
+                        f"🏆 本次前五名：{top5_names}，恭喜！",
+                        "",
+                        "建议家长每天陪孩子复习薄弱科目，保持良好学习节奏。",
+                    ]
+                else:
+                    subjects = {"语文": avg_chinese, "数学": avg_math, "英语": avg_english}
+                    if show_science: subjects["科学"] = avg_science
+                    weakest  = min(subjects, key=subjects.get)
+                    strongest = max(subjects, key=subjects.get)
+                    report_lines = [
+                        f"📊 **{selected_class['grade']}{selected_class['name']} · {selected_exam['title']} 教学分析报告**",
+                        f"📅 考试日期：{selected_exam['exam_date']}　参测学生：{class_size} 人",
+                        "",
+                        "**【成绩概览】**",
+                        f"总分均分 {avg_total:.1f}，最高分 {int(max_score)}，最低分 {int(min_score)}，分差 {int(max_score-min_score)}。",
+                        f"各科均分：语文 {avg_chinese:.1f}，数学 {avg_math:.1f}，英语 {avg_english:.1f}" +
+                        (f"，科学 {avg_science:.1f}" if show_science else "") + "。",
+                        "",
+                        "**【学情诊断】**",
+                        f"{strongest} 为本次最强科目（均分 {subjects[strongest]:.1f}），{weakest} 为相对薄弱科目（均分 {subjects[weakest]:.1f}）。" +
+                        (f"班级分数跨度达 {int(max_score-min_score)} 分，需关注两极分化。" if max_score-min_score > 80 else "班级整体分布较均衡。"),
+                    ]
+                    if trend_text:
+                        report_lines += ["", "**【历史趋势】**", trend_text]
+                    report_lines += [
+                        "",
+                        "**【教学建议】**",
+                        f"① 针对{weakest}薄弱问题，建议增加专项练习，课堂留出5-10分钟查漏补缺。",
+                        "② 对中下层学生实施分层辅导，课后重点跟进，避免差距进一步扩大。",
+                        "③ 总结本次共性错误，下节课集中讲评，强化易错知识点。",
+                        "",
+                        "**【下次周测备考重点】**",
+                        f"重点强化{weakest}基础知识，关注中下层学生进步情况，确保下次均分有所提升。",
+                        "",
+                        f"_报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}_"
+                    ]
 
                 full_report = "\n".join(report_lines)
                 st.markdown(full_report)
@@ -214,7 +239,8 @@ with tab2:
         award_data = []
         for s in top_students:
             row = {"名次": s["rank"], "姓名": s["name"], "总分": int(s["total"]),
-                   "语文": int(s["chinese"]), "数学": int(s["math"]), "英语": int(s["english"]), "奖项": award_title}
+                   "语文": int(s["chinese"]), "数学": int(s["math"]),
+                   "英语": int(s["english"]), "奖项": award_title}
             if show_science:
                 row["科学"] = int(s["science"])
             award_data.append(row)
