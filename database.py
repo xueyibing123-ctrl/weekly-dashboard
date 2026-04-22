@@ -1,13 +1,23 @@
 import streamlit as st
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import time
 
 SENIOR_GRADES = ["三年级", "四年级", "五年级", "六年级"]
 
-def get_connection():
+def get_connection(retries=3, delay=2):
+    """带重试机制的数据库连接，连接断开时自动重连"""
     url = st.secrets["SUPABASE_DB_URL"]
-    conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
-    return conn
+    last_error = None
+    for i in range(retries):
+        try:
+            conn = psycopg2.connect(url, cursor_factory=RealDictCursor, connect_timeout=10)
+            return conn
+        except Exception as e:
+            last_error = e
+            if i < retries - 1:
+                time.sleep(delay)
+    raise last_error
 
 def has_science(grade):
     """三年级及以上有科学科目"""
