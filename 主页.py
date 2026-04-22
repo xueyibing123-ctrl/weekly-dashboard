@@ -1,4 +1,4 @@
-python
+    python
     import streamlit as st
     from database import init_db, get_all_classes, get_latest_exam_per_class, get_top_students, get_all_exams
     import pandas as pd
