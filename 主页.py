@@ -1,5 +1,4 @@
-python
-    import streamlit as st
+import streamlit as st
     from database import init_db, get_all_classes, get_latest_exam_per_class, get_top_students, get_all_exams
     import pandas as pd
     
@@ -12,7 +11,6 @@ python
     
     init_db()
     
-    ── SVG 图标定义 ──────────────────────────────────────────────────────────────
     ICONS = {
         'building': '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M17 21v-8.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0-.5.5V21"/><path d="M9 11V7"/><path d="M15 11V7"/><path d="M9 17v-4"/><path d="M15 17v-4"/></svg>',
         'document': '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>',
@@ -26,16 +24,13 @@ python
         'secondary': '#56A3A6',
         'accent': '#F6C90E',
         'bg': '#F8F9FA',
-        'card_bg': '#FFFFFF',
-        'text': '#1A1A2E',
-        'text_light': '#6B7280',
     }
     
     st.markdown("""
     <style>
         .main-title { font-size: 2rem; font-weight: 700; color: #1a1a2e; margin-bottom: 0.3rem; }
         .sub-title { font-size: 1rem; color: #6b7280; margin-bottom: 2rem; }
-        .metric-card { background: linear-gradient(135deg, #2E86AB 0%, #56A3A6 100%); border-radius: 16px; padding: 1.5rem 1.8rem; color: white; text-align: center; box-shadow: 0 4px 6px rgba(46, 134, 171, 0.15); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .metric-card { background: linear-gradient(135deg, #2E86AB 0%, #56A3A6 100%); border-radius: 16px; padding: 1.5rem 1.8rem; color: white; text-align: center; box-shadow: 0 4px 6px rgba(46, 134, 171, 0.15); }
         .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 12px rgba(46, 134, 171, 0.25); }
         .metric-card .icon { margin-bottom: 0.5rem; display: flex; justify-content: center; }
         .metric-card .icon svg { width: 36px; height: 36px; opacity: 0.95; }
@@ -86,11 +81,10 @@ python
         st.info("暂无数据。请先在「学生管理」页添加班级和学生，再录入成绩。")
     else:
         st.subheader("各班最新周测概览")
-    
         for exam in latest_exams:
             with st.expander(
-                f"{exam['grade']} {exam['class_name']} ｜ {exam['title']} · {exam['exam_date']} ｜ "
-                f"参测 {exam['student_count']} 人 ｜ 班级均分 {round(exam['avg_total'], 1) if exam['avg_total'] else '--'}",
+                f"{exam['grade']} {exam['class_name']} | {exam['title']} | {exam['exam_date']} | "
+                f"参测 {exam['student_count']} 人 | 班级均分 {round(exam['avg_total'], 1) if exam['avg_total'] else '--'}",
                 expanded=False
             ):
                 top5 = get_top_students(exam["id"], 5)
@@ -111,14 +105,12 @@ python
     
         st.markdown("---")
         st.subheader("各班最新均分横向对比")
-    
         chart_data = [e for e in latest_exams if e["avg_total"]]
         if chart_data:
             import plotly.graph_objects as go
             labels = [f"{e['grade']}{e['class_name']}" for e in chart_data]
             values = [round(e["avg_total"], 1) for e in chart_data]
-            chart_colors = ["#2E86AB", "#56A3A6", "#4A7C59", "#7FB069", 
-                            "#5B7C99", "#7B9BB5", "#F6C90E", "#F9A826"][:len(labels)]
+            chart_colors = ["#2E86AB", "#56A3A6", "#4A7C59", "#7FB069", "#5B7C99", "#7B9BB5", "#F6C90E", "#F9A826"][:len(labels)]
             fig = go.Figure(go.Bar(x=labels, y=values, marker_color=chart_colors, text=values, textposition="outside"))
             fig.update_layout(height=350, margin=dict(t=20, b=20, l=40, r=20), yaxis_title="班级均分",
                 plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
